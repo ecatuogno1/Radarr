@@ -3,6 +3,7 @@
 interface CssExports {
   'headerCell': string;
   'sortIcon': string;
+  'stickyActions': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

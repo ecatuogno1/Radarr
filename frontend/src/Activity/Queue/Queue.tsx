@@ -251,6 +251,7 @@ function Queue() {
         {isAllPopulated && !hasError && !!items.length ? (
           <div>
             <Table
+              stickyActions={true}
               selectAll={true}
               allSelected={allSelected}
               allUnselected={allUnselected}
