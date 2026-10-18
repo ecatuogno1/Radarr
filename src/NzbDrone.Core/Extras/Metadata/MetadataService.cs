@@ -159,7 +159,8 @@ namespace NzbDrone.Core.Extras.Metadata
 
             // TODO: Move EpisodeImage and EpisodeMetadata metadata files, instead of relying on consumers to do it
             // (Xbmc's EpisodeImage is more than just the extension)
-            foreach (var consumer in _metadataFactory.GetAvailableProviders())
+            // Only enabled consumers may touch files; a disabled consumer must not rename files it never created.
+            foreach (var consumer in _metadataFactory.Enabled())
             {
                 foreach (var movieFile in movieFiles)
                 {
