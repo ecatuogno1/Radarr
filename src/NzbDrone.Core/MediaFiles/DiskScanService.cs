@@ -134,6 +134,7 @@ namespace NzbDrone.Core.MediaFiles
             CleanMediaFiles(movie, mediaFileList);
 
             var movieFiles = _mediaFileService.GetFilesByMovie(movie.Id);
+            SyncMovieFile(movie, movieFiles);
             var unmappedFiles = MediaFileService.FilterExistingFiles(mediaFileList, movieFiles, movie);
 
             var decisionsStopwatch = Stopwatch.StartNew();
@@ -184,6 +185,17 @@ namespace NzbDrone.Core.MediaFiles
         {
             _logger.Debug("{0} Cleaning up media files in DB", movie);
             _mediaFileTableCleanupService.Clean(movie, mediaFileList);
+        }
+
+        // CleanMediaFiles may have removed the movie's file if its path no longer exists. Detach it from
+        // the in-memory movie so import decisions don't compare a renamed or replaced file against it.
+        private static void SyncMovieFile(Movie movie, List<MovieFile> movieFiles)
+        {
+            if (movie.MovieFileId > 0 && movieFiles.All(f => f.Id != movie.MovieFileId))
+            {
+                movie.MovieFileId = 0;
+                movie.MovieFile = null;
+            }
         }
 
         private void CompletedScanning(Movie movie, List<string> possibleExtraFiles)
