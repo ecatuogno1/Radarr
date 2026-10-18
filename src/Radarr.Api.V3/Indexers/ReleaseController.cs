@@ -10,6 +10,7 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Exceptions;
@@ -36,6 +37,7 @@ namespace Radarr.Api.V3.Indexers
         private readonly IDownloadService _downloadService;
         private readonly IMovieService _movieService;
         private readonly IHistoryService _historyService;
+        private readonly ICustomFormatCalculationService _formatCalculator;
         private readonly Logger _logger;
 
         private readonly ICached<RemoteMovie> _remoteMovieCache;
@@ -49,6 +51,7 @@ namespace Radarr.Api.V3.Indexers
                              IHistoryService historyService,
                              ICacheManager cacheManager,
                              IQualityProfileService qualityProfileService,
+                             ICustomFormatCalculationService formatCalculator,
                              Logger logger)
             : base(qualityProfileService)
         {
@@ -59,6 +62,7 @@ namespace Radarr.Api.V3.Indexers
             _downloadService = downloadService;
             _movieService = movieService;
             _historyService = historyService;
+            _formatCalculator = formatCalculator;
             _logger = logger;
 
             PostValidator.RuleFor(s => s.IndexerId).ValidId();
@@ -105,20 +109,19 @@ namespace Radarr.Api.V3.Indexers
                     remoteMovie.Movie = _movieService.GetMovie(release.MovieId!.Value);
                     remoteMovie.ParsedMovieInfo.Quality = release.Quality;
                     remoteMovie.Languages = release.Languages;
+                    RecalculateCustomFormats(remoteMovie);
+                }
+                else if (release.MovieId.HasValue && remoteMovie.Movie?.Id != release.MovieId.Value)
+                {
+                    // The same release can be cached from a search for another movie or parsed as another movie,
+                    // the movie it was requested for wins.
+                    remoteMovie = CloneForMovie(remoteMovie, _movieService.GetMovie(release.MovieId.Value));
+                    RecalculateCustomFormats(remoteMovie);
                 }
 
                 if (remoteMovie.Movie == null)
                 {
-                    if (release.MovieId.HasValue)
-                    {
-                        var movie = _movieService.GetMovie(release.MovieId.Value);
-
-                        remoteMovie.Movie = movie;
-                    }
-                    else
-                    {
-                        throw new NzbDroneClientException(HttpStatusCode.NotFound, "Unable to find matching movie, will need to be manually provided");
-                    }
+                    throw new NzbDroneClientException(HttpStatusCode.NotFound, "Unable to find matching movie, will need to be manually provided");
                 }
 
                 await _downloadService.DownloadReport(remoteMovie, release.DownloadClientId);
@@ -185,6 +188,32 @@ namespace Radarr.Api.V3.Indexers
         private string GetCacheKey(ReleaseResource resource)
         {
             return string.Concat(resource.IndexerId, "_", resource.Guid);
+        }
+
+        // Custom formats and their score depend on the movie and its quality profile, so they
+        // must not be carried over from the movie the release was originally evaluated for.
+        private void RecalculateCustomFormats(RemoteMovie remoteMovie)
+        {
+            remoteMovie.CustomFormats = _formatCalculator.ParseCustomFormat(remoteMovie, remoteMovie.Release.Size);
+            remoteMovie.CustomFormatScore = remoteMovie.Movie?.QualityProfile?.CalculateCustomFormatScore(remoteMovie.CustomFormats) ?? 0;
+        }
+
+        private static RemoteMovie CloneForMovie(RemoteMovie remoteMovie, Movie movie)
+        {
+            return new RemoteMovie
+            {
+                Release = remoteMovie.Release,
+                ParsedMovieInfo = remoteMovie.ParsedMovieInfo,
+                MovieRequested = remoteMovie.MovieRequested,
+                DownloadAllowed = remoteMovie.DownloadAllowed,
+                SeedConfiguration = remoteMovie.SeedConfiguration,
+                CustomFormats = remoteMovie.CustomFormats,
+                CustomFormatScore = remoteMovie.CustomFormatScore,
+                MovieMatchType = remoteMovie.MovieMatchType,
+                ReleaseSource = remoteMovie.ReleaseSource,
+                Languages = remoteMovie.Languages,
+                Movie = movie
+            };
         }
 
         private List<ReleaseResource> MapDecisions(IEnumerable<DownloadDecision> decisions, List<MovieHistory> history)

@@ -125,6 +125,7 @@ function InteractiveSearchRow(props: InteractiveSearchRowProps) {
       onGrabPress({
         guid,
         indexerId,
+        ...searchPayload,
       });
 
       return;
@@ -134,6 +135,7 @@ function InteractiveSearchRow(props: InteractiveSearchRowProps) {
   }, [
     guid,
     indexerId,
+    searchPayload,
     downloadAllowed,
     onGrabPress,
     setIsConfirmGrabModalOpen,
