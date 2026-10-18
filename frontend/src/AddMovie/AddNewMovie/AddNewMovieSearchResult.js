@@ -101,6 +101,9 @@ class AddNewMovieSearchResult extends Component {
       <div className={styles.searchResult}>
         <Link
           className={styles.underlay}
+          aria-label={translate('OpenMovieTitle', {
+            title: !!year && !title.contains(year) ? `${title} (${year})` : title
+          })}
           {...linkProps}
         />
 
