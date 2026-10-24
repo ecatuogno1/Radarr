@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NLog;
 using NzbDrone.Common.Cache;
-using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Exceptions;
@@ -84,9 +84,10 @@ namespace Radarr.Api.V3.Indexers
             {
                 if (release.ShouldOverride == true)
                 {
-                    Ensure.That(release.MovieId, () => release.MovieId).IsNotNull();
-                    Ensure.That(release.Quality, () => release.Quality).IsNotNull();
-                    Ensure.That(release.Languages, () => release.Languages).IsNotNull();
+                    if (!release.MovieId.HasValue || release.Quality == null || release.Languages == null)
+                    {
+                        throw new NzbDroneClientException(HttpStatusCode.BadRequest, "Overriding a release requires a movie, quality and languages");
+                    }
 
                     // Clone the remote episode so we don't overwrite anything on the original
                     remoteMovie = new RemoteMovie
@@ -157,6 +158,10 @@ namespace Radarr.Api.V3.Indexers
             catch (SearchFailedException ex)
             {
                 throw new NzbDroneClientException(HttpStatusCode.BadRequest, ex.Message);
+            }
+            catch (ModelNotFoundException)
+            {
+                throw new NzbDroneClientException(HttpStatusCode.NotFound, $"Movie with ID {movieId} does not exist");
             }
             catch (Exception ex)
             {
