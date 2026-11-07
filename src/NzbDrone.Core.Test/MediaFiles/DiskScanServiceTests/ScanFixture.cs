@@ -142,6 +142,28 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
         }
 
         [Test]
+        public void should_not_compare_a_renamed_file_against_a_file_removed_during_the_scan()
+        {
+            GivenMovieFolder();
+
+            var removed = new MovieFile { Id = 5, MovieId = _movie.Id, RelativePath = "Movie.Old.mkv" };
+            _movie.MovieFileId = removed.Id;
+            _movie.MovieFile = removed;
+
+            GivenFiles(new List<string> { Path.Combine(_movie.Path, "Movie.Renamed.mkv").AsOsAgnostic() });
+
+            Subject.Scan(_movie);
+
+            Mocker.GetMock<IMakeImportDecision>()
+                  .Verify(
+                      v => v.GetImportDecisions(
+                          It.Is<List<string>>(l => l.Count == 1),
+                          It.Is<Movie>(m => m.MovieFileId == 0 && m.MovieFile == null),
+                          false),
+                      Times.Once());
+        }
+
+        [Test]
         public void should_not_scan_extras_subfolder()
         {
             GivenMovieFolder();
