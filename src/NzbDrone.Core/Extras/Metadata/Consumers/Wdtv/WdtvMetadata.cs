@@ -34,6 +34,12 @@ namespace NzbDrone.Core.Extras.Metadata.Consumers.Wdtv
 
             if (metadataFile.Type == MetadataType.MovieImage)
             {
+                // folder.jpg is the movie folder image, not tied to the movie file name, so it keeps its name.
+                if (Path.GetFileNameWithoutExtension(metadataFile.RelativePath).Equals("folder", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return Path.Combine(movie.Path, metadataFile.RelativePath);
+                }
+
                 return GetMovieFileImageFilename(movieFilePath);
             }
 
