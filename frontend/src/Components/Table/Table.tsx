@@ -12,10 +12,12 @@ import TableHeader from './TableHeader';
 import TableHeaderCell from './TableHeaderCell';
 import TableSelectAllHeaderCell from './TableSelectAllHeaderCell';
 import styles from './Table.css';
+import headerCellStyles from './TableHeaderCell.css';
 
 interface TableProps {
   className?: string;
   horizontalScroll?: boolean;
+  stickyActions?: boolean;
   selectAll?: boolean;
   allSelected?: boolean;
   allUnselected?: boolean;
@@ -34,6 +36,7 @@ interface TableProps {
 function Table({
   className = styles.table,
   horizontalScroll = true,
+  stickyActions = false,
   selectAll = false,
   allSelected = false,
   allUnselected = false,
@@ -86,6 +89,15 @@ function Table({
                   name={name}
                   isSortable={false}
                   {...otherColumnProps}
+                  className={
+                    stickyActions && name === 'actions'
+                      ? classNames(
+                          otherColumnProps.className ??
+                            headerCellStyles.headerCell,
+                          headerCellStyles.stickyActions
+                        )
+                      : otherColumnProps.className
+                  }
                 >
                   <TableOptionsModalWrapper
                     columns={columns}

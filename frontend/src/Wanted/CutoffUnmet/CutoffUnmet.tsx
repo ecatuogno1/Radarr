@@ -323,6 +323,7 @@ function CutoffUnmet() {
         {isPopulated && !error && !!items.length ? (
           <div>
             <Table
+              stickyActions={true}
               selectAll={true}
               allSelected={allSelected}
               allUnselected={allUnselected}
